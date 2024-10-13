@@ -143,18 +143,17 @@ class FlightPlan:
             for plan in self.plans
         ]
 
-    # not used, consider removing
     @property
-    def is_local(self):
-        """
-        Returns True if the flight plan is complete, False otherwise.
-        The flight plan is complete if the first plan is a departure plan and the last plan is an arrival plan.
-        Complete flight plan has flight_type='local'.
-        """
-        return (
-            self.plans[0].runway_use == 'departure'
-            and self.plans[-1].runway_use == 'arrival'
-        )
+    def flight_type(self):
+        if self.flight_type:
+            return self.flight_type
+        else:
+            return (
+                'local' if self.plans[0].runway_use == 'departure' and self.plans[-1].runway_use == 'arrival' else
+                'outbound' if self.plans[0].runway_use == 'departure' else
+                'inbound' if self.plans[-1].runway_use == 'arrival' else
+                'unknown'
+            )
 
     @property
     def num_facilities(self) -> int:

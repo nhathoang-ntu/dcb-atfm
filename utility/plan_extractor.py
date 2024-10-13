@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 import pandas as pd
-from flightplan import FlightPlan, Plan
+from abtract.flightplan import FlightPlan, Plan
 
 callsign = str
 
@@ -58,7 +58,6 @@ class PlanExtractor:
 
 class FlightPlanExtractor:
     """Defines the procedure to extract flight plan from data.
-
     Assuming each call sign represents a single flight.
     """
 
