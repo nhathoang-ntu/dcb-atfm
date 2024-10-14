@@ -13,7 +13,8 @@ class FlightPlanConfig(Config):
 
     # key
     _FLIGHT_PLAN_FILE_PATH = 'flight_plan_file_path'
-    _FLIGHT_PLAN_FILE_TYPE = 'flight_plan_file_type'
+    _TRAFFIC_HOUR = 'traffic_hour'
+    _TRAFFIC_DAY = 'traffic_day'
     _EXCLUDE_NON_LOCAL = 'exclude_non_local'
     _EXCLUDE_RUNWAY = 'exclude_runway'
 
@@ -22,8 +23,12 @@ class FlightPlanConfig(Config):
         return self._config.get(self._FLIGHT_PLAN, self._FLIGHT_PLAN_FILE_PATH)
     
     @property
-    def flight_plan_file_type(self):
-        return self._config.get(self._FLIGHT_PLAN, self._FLIGHT_PLAN_FILE_TYPE)
+    def traffic_hour(self):
+        return self._config.getint(self._FLIGHT_PLAN, self._TRAFFIC_HOUR)
+    
+    @property
+    def traffic_day(self):
+        return self._config.getint(self._FLIGHT_PLAN, self._TRAFFIC_DAY)
     
     @property
     def exclude_non_local(self):

@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 import pandas as pd
-from abtract.flightplan import FlightPlan, Plan
+from abstract.flightplan import FlightPlan, Plan
 
 callsign = str
 
@@ -34,8 +34,8 @@ class PlanExtractor:
         if not mapping_dict:
             mapping_dict = {
                 'id': 'call_sign',
-                'flight_type': 'flight_type',
                 'airline': 'airline',
+                'flight_type': 'flight_type',
                 'facility': 'facility',
                 'time_entry': 'time_entry',
                 'time_exit': 'time_exit',
@@ -77,35 +77,3 @@ class FlightPlanExtractor:
                 flight_plans_dict[plan.call_sign].add(plan)
 
         return flight_plans_dict
-
-
-class DataExtractor:
-    @classmethod
-    def extract_from_data(
-        simulation_data_file_path: str,
-        day: int,
-        hour: int,
-        output_binary_file_path: str = None,
-        local_only: bool = True,
-        remove_runway: bool = True
-    ):
-        # na_filter = False since some simulation data column is empty
-        flight_plan_df = pd.read_csv(simulation_data_file_path, na_filter=False, index_col=False)
-        filtered_data_df = flight_plan_df[(flight_plan_df['day'] == day) & (flight_plan_df['hour'] < hour)]
-        flight_plans = FlightPlanExtractor.extract_from_pandas_df(filtered_data_df)
-
-        if local_only:
-            flight_plans = {k: v for k, v in flight_plans.items() if v.flight_type == 'local'}
-
-        if remove_runway:
-            for flight_id, flight_plan in flight_plans.items():
-                flight_plan = flight_plan.trim_runway()
-                flight_plans[flight_id] = flight_plan
-
-        # if output_binary_file_path:
-        #     with open(output_binary_file_path, 'wb') as fwb:
-        #         pickle.dump(flight_plans, fwb)
-
-        print(f'Num flight extracted: {len(flight_plans)}')
-
-        return flight_plans
