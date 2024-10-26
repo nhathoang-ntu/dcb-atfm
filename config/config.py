@@ -17,6 +17,7 @@ class FlightPlanConfig(Config):
     _TRAFFIC_DAY = 'traffic_day'
     _EXCLUDE_NON_LOCAL = 'exclude_non_local'
     _EXCLUDE_RUNWAY = 'exclude_runway'
+    _BINARY_FILE_PATH = 'binary_file_path'
 
     @property
     def flight_plan_file_path(self):
@@ -32,11 +33,16 @@ class FlightPlanConfig(Config):
     
     @property
     def exclude_non_local(self):
-        return self._config.getboolean(self._FLIGHT_PLAN, self._EXCLUDE_NON_LOCAL)
+        return bool(self._config.get(self._FLIGHT_PLAN, self._EXCLUDE_NON_LOCAL))
     
     @property
     def exclude_runway(self):
-        return self._config.getboolean(self._FLIGHT_PLAN, self._EXCLUDE_RUNWAY)
+        # return True
+        return bool(self._config.get(self._FLIGHT_PLAN, self._EXCLUDE_RUNWAY))
+    
+    @property
+    def binary_file_path(self):
+        return self._config.get(self._FLIGHT_PLAN, self._BINARY_FILE_PATH)
     
 
 class DCBEnvironmentConfig(Config):
@@ -51,7 +57,7 @@ class DCBEnvironmentConfig(Config):
     _TIME_SLOT_DURATION = 'time_slot_duration'
     _MAX_ADVANCE_NUM = 'max_advance_num'
     _MAX_DELAY_NUM = 'max_delay_num'
-    _DEFAULT_CAPACITY = 'default_capacity'
+    _DEFAULT_CAPACITY_NUM = 'default_capacity_num'
     _CAPACITY_MATRIX = 'capacity_matrix'
     _CAPACITY_CALCULATION = 'capacity_calculation'
     _SPILLOVER_PERCENTAGE = 'spillover_percentage'
@@ -85,8 +91,8 @@ class DCBEnvironmentConfig(Config):
         return self._config.getint(self._DCB_ENVIRONMENT, self._MAX_DELAY_NUM)
     
     @property
-    def default_capacity(self):
-        return self._config.getint(self._DCB_ENVIRONMENT, self._DEFAULT_CAPACITY)
+    def default_capacity_num(self):
+        return self._config.getint(self._DCB_ENVIRONMENT, self._DEFAULT_CAPACITY_NUM)
 
     @property
     def capacity_matrix(self):
@@ -94,9 +100,9 @@ class DCBEnvironmentConfig(Config):
     
     @property
     def capacity_calculation(self):
-        return self._config.getboolean(self._DCB_ENVIRONMENT, self._CAPACITY_CALCULATION)
+        return bool(self._config.get(self._DCB_ENVIRONMENT, self._CAPACITY_CALCULATION))
     
     @property
     def spillover_percentage(self):
-        return self._config.getfloat(self._DCB_ENVIRONMENT, self._SPILLOVER_PERCENTAGE)
+        return float(self._config.get(self._DCB_ENVIRONMENT, self._SPILLOVER_PERCENTAGE))
     

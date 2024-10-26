@@ -1,10 +1,12 @@
+import numpy as np
 import pandas as pd
 import pickle
+import json
 
-from typing import Dict
+from typing import Dict, Tuple, List
 
 from abstract.flightplan import FlightPlan
-from plan_extractor import FlightPlanExtractor
+from utility.plan_extractor import FlightPlanExtractor
 
 class FlightPlanUtility:
     def __init__(
@@ -12,7 +14,7 @@ class FlightPlanUtility:
         flight_plan_file_path: str, 
         traffic_hour: int | None = None,
         traffic_day: int | None = None,
-        exclude_non_local: bool = True, 
+        exclude_non_local: bool = False, 
         exclude_runway: bool = True,
         binary_file_path: str | None = None
     ):
@@ -25,20 +27,18 @@ class FlightPlanUtility:
 
         self.data = pd.read_csv(self.flight_plan_file_path, na_filter=False, index_col=False)
 
-    @classmethod
+    @staticmethod
     def _set_flight_type(df: pd.DataFrame) -> pd.DataFrame:
         # set local flights (departure and arrival within the region)
         local_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'departure' in x['rwyuse'].values and 'arrival' in x['rwyuse'].values)['id'].tolist()
-        # df['flight_type'] = np.where(df['id'].isin(local_flight_id), 'local')
-        df.loc[df['id'].isin(local_flight_id), 'flight_type'] = 'local'
-
         # set outbound flights (arrival outside the region)
-        outbound_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'departure' in x['rwyuse'].values and 'arrival' not in x['rwyuse'].values)['id'].tolist()
-        df.loc[df['id'].isin(outbound_flight_id), 'flight_type'] = 'outbound'
-
+        outbound_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'arrival' not in x['rwyuse'].values and 'departure' in x['rwyuse'].values)['id'].tolist()
         # set inbound flights (departure outside the region)
         inbound_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'departure' not in x['rwyuse'].values and 'arrival' in x['rwyuse'].values)['id'].tolist()
-        df.loc[df['id'].isin(inbound_flight_id), 'flight_type'] = 'inbound'
+
+        df['flight_type'] = np.where(df['id'].isin(outbound_flight_id), 'outbound', 'unknown')
+        df['flight_type'] = np.where(df['id'].isin(inbound_flight_id), 'inbound', df['flight_type'])
+        df['flight_type'] = np.where(df['id'].isin(local_flight_id), 'local', df['flight_type'])
         
         return df
 
@@ -52,7 +52,7 @@ class FlightPlanUtility:
 
             return data[~data['id'].isin(flight_id)]
     
-
+    @staticmethod
     def _set_airline(df: pd.DataFrame) -> pd.DataFrame:
         # set airline based on the first3 characters of the call sign
         df['airline'] = df['id'].str[:3]
@@ -70,31 +70,33 @@ class FlightPlanUtility:
         """
         Set additional features to the data.
         """
-        data = self.data
-        data = self._set_airline(data)
+        data = self._set_airline(self.data)
+        if 'flight_type' in data.columns:
+            data.drop('flight_type', axis=1, inplace=True)
+            data['flight_type'] = None
         data = self._set_flight_type(data)
         #data = cls.exclude_negative_flights(data)
         return data
     
     def extract_data(self, csv_file_path: str | None = None) -> Dict[str, FlightPlan]:
         # na_filter = False since some simulation data column is empty
-        flight_plan_df = pd.read_csv(self.flight_plan_file_path, na_filter=False, index_col=False)
+        # flight_plan_df = pd.read_csv(self.flight_plan_file_path, na_filter=False, index_col=False)
 
         if self.traffic_day is not None and self.traffic_hour is not None:
-            flight_plan_df = flight_plan_df[(flight_plan_df['day'] == self.traffic_day) & (flight_plan_df['hour'] < self.traffic_hour)]
+            self.data = self.data[(self.data['day'] == self.traffic_day) & (self.data['hour'] < self.traffic_hour)]
 
-        if self.exclude_non_local:
-            flight_plan_df = flight_plan_df[flight_plan_df['flight_type'] == 'local']
+        if not self.exclude_non_local:
+            self.data = self.data[self.data['flight_type'] == 'local']
 
         if self.exclude_runway:
             # trim the runway, only keep the row with rwyuse = None
-            flight_plan_df = flight_plan_df[flight_plan_df['rwyuse'].isnull()]
+            self.data = self.data[self.data['rwyuse'] == '']
 
         if csv_file_path:
             with open(csv_file_path, 'w') as f:
-                flight_plan_df.to_csv(f, index=False)
+                self.data.to_csv(f, index=False)
 
-        flight_plans = FlightPlanExtractor.extract_from_pandas_df(flight_plan_df)
+        flight_plans = FlightPlanExtractor.extract_from_pandas_df(self.data)
 
         if self.output_file_path:
             with open(self.output_file_path, 'wb') as fwb:
@@ -106,11 +108,26 @@ class FlightPlanUtility:
     
 class FacilityUtility:
      @classmethod
-     def calculate_capacity(cls, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Calculate the capacity of the facility.
-        """
-        return data
+     def calculate_capacity(
+         cls, 
+         default_capacity: int,
+         facility_array: List[str],
+         demand_matrix: Dict[Tuple[int, int], int]
+    ) -> Dict[Tuple[int, int], int]:
+        # self.capacity_array = [self.default_capacity] * len(self.facility_ids)
+        # self.capacity_constraint_matrix = {}
+        # #get top highest demands for each facility from the actual demand matrix
+        # for facility in self.facility_ids:
+        #     #get the demand of the facility
+        #     facility_demand = [self.actual_demand_matrix_computed.get((facility, time), 0) for time in self.time_slot_ids]
+        #     facility_demand = sorted(facility_demand, reverse=True)
+        #     self.capacity_array[facility] = max(int(sum(facility_demand[:top]) / top / (1 + percentage_exceed)) + 1, self.capacity_array[facility])
+        
+        # # Set the capacity constraint matrix
+        # for time in range(len(self.time_slot_ids)):
+        #     for facility in range(len(self.facility_ids)):
+        #         self.capacity_constraint_matrix[(facility, time)] = self.capacity_array[facility]
+        pass
      
      @classmethod
      def create_capacity_matrix(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -118,3 +135,49 @@ class FacilityUtility:
         Create the capacity matrix.
         """
         return data
+     
+class DataExtractor:
+    @staticmethod
+    def extract_data(
+        input_file_path: str,
+        output_file_path: str,
+        facility_file_path: str,
+        volume: str = 'current',
+        routing: str = 'ats',
+        trim_runway: bool = True,
+    ):
+        #read the data from the csv file
+        data = pd.read_csv(input_file_path)
+
+        data = data[(data['volume'] == volume) & (data['routing'] == routing)]
+        data.drop(['volume', 'routing'], axis=1, inplace=True)
+
+        with open(facility_file_path) as f:
+            data_dict = json.load(f)
+
+        facility_list = list(data_dict.values())
+        facility_list = [item for sublist in facility_list for item in sublist]
+        print(facility_list)
+
+        df = data[data['facility'].isin(facility_list)]
+
+        # create a airline column, which is the first 3 characters of the flight id
+        df['airline'] = df['id'].str[:3]
+
+        # set local flights (departure and arrival within the region)
+        local_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'departure' in x['rwyuse'].values and 'arrival' in x['rwyuse'].values)['id'].tolist()
+        # set outbound flights (arrival outside the region)
+        outbound_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'arrival' not in x['rwyuse'].values and 'departure' in x['rwyuse'].values)['id'].tolist()
+        # set inbound flights (departure outside the region)
+        inbound_flight_id = df.groupby('id').filter(lambda x: len(x) >= 2 and 'departure' not in x['rwyuse'].values and 'arrival' in x['rwyuse'].values)['id'].tolist()
+
+        df['flight_type'] = np.where(df['id'].isin(outbound_flight_id), 'outbound', 'unknown')
+        df['flight_type'] = np.where(df['id'].isin(inbound_flight_id), 'inbound', df['flight_type'])
+        df['flight_type'] = np.where(df['id'].isin(local_flight_id), 'local', df['flight_type'])
+
+        if trim_runway:
+            df = df[~df['rwyuse'].isin(['arrival', 'departure'])]
+
+
+        df.to_csv(output_file_path, index=False)
+        print('data extraction completed')

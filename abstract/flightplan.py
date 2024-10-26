@@ -19,6 +19,8 @@ class Plan:
     - Rescheduling (Re-allocating) the plan to a specific number of time slots.
     """
     call_sign: str
+    airline: str
+    flight_type: str
     facility: str
     time_entry: int
     time_exit: int
@@ -62,9 +64,6 @@ class FlightPlan:
     - Adding the plan to the flight plan.
     - Rescheduling the plan to a specific number of time slots.
     """
-    callsign: str
-    flight_type: str = 'local'
-    airline: str = callsign[:2]
     plans: List[Plan]
 
     def sorted(self, in_place=True):
